@@ -10,14 +10,19 @@
 #define ENC_ROTOR_IN 3
 #define ENC_BUTTON_IN 2
 
+#define MOTOR_STOP_BUTTON 13
+
 // Motor
 #define PWM_MOTOR_OUT 10
 
-#define MOTOR_STOP_BUTTON 13
+#define DIR_MOTOR_OUT_IN1 11
+#define DIR_MOTOR_OUT_IN2 12
+
+
 
 int presetMode = 6;
 
-int currentSpeed = 30;
+int currentSpeed = 180;
 
 Encoder rotaryEncoder(8, 9);
 
@@ -33,8 +38,13 @@ void setup() {
   pinMode(ENC_BUTTON_IN, INPUT_PULLUP);
 
   pinMode(PWM_MOTOR_OUT, OUTPUT);
+  pinMode(DIR_MOTOR_OUT_IN1, OUTPUT);
+  pinMode(DIR_MOTOR_OUT_IN2, OUTPUT);
 
   pinMode(MOTOR_STOP_BUTTON, INPUT_PULLUP);
+
+  digitalWrite(DIR_MOTOR_OUT_IN1, HIGH); // INIT direction of motor
+  digitalWrite(DIR_MOTOR_OUT_IN2, LOW);
 
 }
 
@@ -70,27 +80,58 @@ void turnMotorOff() {
 }
 
 
-boolean changeMotorSpeed(int pwmAmount) {
-  if (pwmAmount > 255) {
-    pwmAmount = 30;
+void setMotorSpeed(int pwmAmount) {
+  analogWrite(PWM_MOTOR_OUT, 210);
+  delay(100);
+  analogWrite(PWM_MOTOR_OUT, pwmAmount);
+}
+
+void changeMotorDirection(int pwmAmount) {
+
+  if (pwmAmount < 0 && !digitalRead(DIR_MOTOR_OUT_IN1)) {
+    digitalWrite(DIR_MOTOR_OUT_IN1, HIGH);
+    digitalWrite(DIR_MOTOR_OUT_IN2, LOW);
   }
 
-  if (pwmAmount >= 0 && pwmAmount <= 255) {
-    analogWrite(PWM_MOTOR_OUT, pwmAmount);
-    currentSpeed = pwmAmount;
-    delay(150);
-    return true;
+  else if (pwmAmount > 0 && !digitalRead(DIR_MOTOR_OUT_IN2)) {
+    digitalWrite(DIR_MOTOR_OUT_IN1, LOW);
+    digitalWrite(DIR_MOTOR_OUT_IN2, HIGH);
   }
 }
 
+
+boolean changeMotorSpeed(int pwmAmount) {
+  
+  if (pwmAmount > 254 || pwmAmount < -254) { // If out of bonds for PWM, reset to speed
+    pwmAmount = 180;
+  }
+
+  if (pwmAmount > -180 && pwmAmount < 0) {
+    pwmAmount = 180;
+  }
+
+  if (pwmAmount < 180 && pwmAmount > 0) {
+    pwmAmount = -180;
+  }
+
+  changeMotorDirection(abs(pwmAmount));
+  
+  setMotorSpeed(abs(pwmAmount));
+  
+  currentSpeed = pwmAmount;
+  
+  return true;
+}
+
 void checkRotaryInput() {
+
   long currentPosition = rotaryEncoder.read();
 
   if (currentPosition != oldPosition) {
     if (currentPosition < oldPosition) {
-      changeMotorSpeed(currentSpeed - 10);
+      changeMotorSpeed(currentSpeed - 7);
     } else {
-      changeMotorSpeed(currentSpeed + 10);
+      changeMotorSpeed(currentSpeed + 7);
     }
   }
 }
